@@ -1,0 +1,97 @@
+============================================
+  BUILD INSTRUCTIONS FOR WINDOWS EXECUTABLE
+============================================
+
+This document explains how to build a standalone Windows executable
+that does NOT require Python installation.
+
+
+PREREQUISITES
+-------------
+You need a Windows computer with:
+1. Python 3.10 or higher installed
+2. Internet connection (to download dependencies)
+
+
+BUILD STEPS
+-----------
+
+1. Copy this entire folder to your Windows machine
+
+2. Open Command Prompt (cmd) or PowerShell
+
+3. Navigate to the folder:
+   cd C:\path\to\Tool
+
+4. Run the build script:
+   build_exe.bat
+
+5. Wait for the build to complete (may take 5-10 minutes)
+
+6. The executable will be in:
+   dist\Process_CDD_ZTE\Process_CDD_ZTE.exe
+
+
+DISTRIBUTION
+------------
+After building, distribute the ENTIRE folder:
+   dist\Process_CDD_ZTE\
+
+This folder contains:
+- Process_CDD_ZTE.exe  (main executable)
+- _internal\           (required libraries)
+- Input\               (input files folder)
+- Template\            (template files folder)
+- Output\              (output files folder)
+- config.json          (configuration file)
+
+Users can simply:
+1. Extract the folder anywhere
+2. Double-click Process_CDD_ZTE.exe
+3. No Python or installation required!
+
+
+MANUAL BUILD (Alternative)
+--------------------------
+If build_exe.bat doesn't work, run manually:
+
+1. Create virtual environment:
+   python -m venv .venv
+   .venv\Scripts\activate
+
+2. Install dependencies:
+   pip install -r requirements.txt
+   pip install pyinstaller
+
+3. Build with PyInstaller:
+   pyinstaller Process_CDD_ZTE.spec
+
+4. Copy folders to dist:
+   xcopy /E /I Input dist\Process_CDD_ZTE\Input
+   xcopy /E /I Template dist\Process_CDD_ZTE\Template
+   mkdir dist\Process_CDD_ZTE\Output
+   copy config.json dist\Process_CDD_ZTE\
+
+
+TROUBLESHOOTING
+---------------
+
+1. "ModuleNotFoundError" during build:
+   - Add the missing module to hiddenimports in Process_CDD_ZTE.spec
+   - Rebuild
+
+2. Antivirus blocks the exe:
+   - This is a false positive (common with PyInstaller)
+   - Add exception in antivirus settings
+   - Or sign the executable with a code signing certificate
+
+3. "Failed to execute script":
+   - Build with console=True in spec file to see errors
+   - Check all dependencies are installed
+
+4. Large executable size:
+   - Normal, includes Python interpreter + all libraries
+   - Typically 50-150 MB
+
+
+============================================
