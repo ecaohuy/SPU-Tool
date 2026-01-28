@@ -61,6 +61,34 @@ def calculate_progressive_tax(taxable_income: float) -> float:
     return tax
 
 
+def calculate_gross_from_net(target_net, num_dependents, bonus_oncall, ot15, ot2, ot3, working_days=22, employee_type="Outsource"):
+    """Calculate Gross Salary from Net Salary using binary search"""
+    # Initial bounds for binary search
+    low = 0
+    high = target_net * 3  # Upper bound estimate
+    tolerance = 100  # Accuracy within 100 VND
+    max_iterations = 100
+
+    for _ in range(max_iterations):
+        mid = (low + high) / 2
+        result = calculate_net_salary(mid, num_dependents, bonus_oncall, ot15, ot2, ot3, working_days, employee_type)
+        calculated_net = result['net_salary']
+
+        if abs(calculated_net - target_net) < tolerance:
+            # Found the gross salary, return full result
+            result['gross_salary'] = mid
+            return result
+        elif calculated_net < target_net:
+            low = mid
+        else:
+            high = mid
+
+    # Return best estimate
+    result = calculate_net_salary(mid, num_dependents, bonus_oncall, ot15, ot2, ot3, working_days, employee_type)
+    result['gross_salary'] = mid
+    return result
+
+
 def calculate_net_salary(gross_salary, num_dependents, bonus_oncall, ot15, ot2, ot3, working_days=22, employee_type="Outsource"):
     """Calculate Net Salary from Gross Salary"""
     # Calculate Transport based on working days
@@ -117,14 +145,13 @@ def calculate_net_salary(gross_salary, num_dependents, bonus_oncall, ot15, ot2, 
 class SalaryCalculatorApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Salary Calculator - Gross to Net")
-        self.root.geometry("520x700")
-        self.root.minsize(480, 600)
+        self.root.title("Salary Calculator")
+        self.root.geometry("550x750")
+        self.root.minsize(500, 650)
         self.root.resizable(True, True)
 
         # Remove the default Python icon
         try:
-            # Create a transparent 1x1 pixel image as icon (works on Linux)
             empty_icon = tk.PhotoImage(width=1, height=1)
             self.root.iconphoto(True, empty_icon)
         except:
@@ -138,8 +165,6 @@ class SalaryCalculatorApp:
         style.configure('Big.TButton', font=('Arial', 11, 'bold'))
 
         self.create_widgets()
-
-        # Center window on screen
         self.center_window()
 
     def center_window(self):
@@ -152,108 +177,92 @@ class SalaryCalculatorApp:
         self.root.geometry(f'{width}x{height}+{x}+{y}')
 
     def create_widgets(self):
-        # Create canvas with scrollbar for scrollable content
-        canvas = tk.Canvas(self.root, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=canvas.yview)
+        # Create notebook (tabbed interface)
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # Scrollable frame
-        self.scrollable_frame = ttk.Frame(canvas)
+        # Create tabs
+        self.gross_to_net_tab = ttk.Frame(self.notebook)
+        self.net_to_gross_tab = ttk.Frame(self.notebook)
 
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
+        self.notebook.add(self.gross_to_net_tab, text="Gross to Net")
+        self.notebook.add(self.net_to_gross_tab, text="Net to Gross")
 
-        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        # Create content for each tab
+        self.create_gross_to_net_tab()
+        self.create_net_to_gross_tab()
+
+    def create_gross_to_net_tab(self):
+        """Create Gross to Net calculator tab"""
+        # Create canvas with scrollbar
+        canvas = tk.Canvas(self.gross_to_net_tab, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.gross_to_net_tab, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Enable mousewheel scrolling
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
-        # Pack scrollbar and canvas
         scrollbar.pack(side="right", fill="y")
         canvas.pack(side="left", fill="both", expand=True)
 
-        # Bind canvas resize to adjust scrollable frame width
         def configure_canvas(event):
             canvas.itemconfig(canvas.find_all()[0], width=event.width)
         canvas.bind('<Configure>', configure_canvas)
 
-        # Main content frame inside scrollable frame
-        main_frame = ttk.Frame(self.scrollable_frame, padding="20")
+        # Main content frame
+        main_frame = ttk.Frame(scrollable_frame, padding="15")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # Title
-        title_label = ttk.Label(main_frame, text="GROSS TO NET SALARY CALCULATOR", style='Title.TLabel')
-        title_label.pack(pady=(0, 15))
+        ttk.Label(main_frame, text="GROSS TO NET CALCULATOR", style='Title.TLabel').pack(pady=(0, 10))
 
         # Input frame
         input_frame = ttk.LabelFrame(main_frame, text="INPUT", padding="10")
         input_frame.pack(fill=tk.X, pady=(0, 10))
 
-        # Employee Type selection
+        # Employee Type
         type_frame = ttk.Frame(input_frame)
         type_frame.pack(fill=tk.X, pady=(0, 8))
-
         ttk.Label(type_frame, text="Employee Type:", width=22, anchor='w').pack(side=tk.LEFT)
-
-        self.employee_type = tk.StringVar(value="Outsource")
-
-        type_buttons_frame = ttk.Frame(type_frame)
-        type_buttons_frame.pack(side=tk.RIGHT)
-
-        ttk.Radiobutton(type_buttons_frame, text="Outsource", variable=self.employee_type, value="Outsource").pack(side=tk.LEFT, padx=5)
-        ttk.Radiobutton(type_buttons_frame, text="Internal", variable=self.employee_type, value="Internal").pack(side=tk.LEFT, padx=5)
+        self.g2n_employee_type = tk.StringVar(value="Outsource")
+        type_buttons = ttk.Frame(type_frame)
+        type_buttons.pack(side=tk.RIGHT)
+        ttk.Radiobutton(type_buttons, text="Outsource", variable=self.g2n_employee_type, value="Outsource").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(type_buttons, text="Internal", variable=self.g2n_employee_type, value="Internal").pack(side=tk.LEFT, padx=5)
 
         ttk.Separator(input_frame, orient='horizontal').pack(fill=tk.X, pady=5)
 
         # Input fields
         fields = [
-            ("Gross Salary (VND):", "gross_salary"),
-            ("Number of Dependents:", "dependents"),
-            ("Bonus + On Call (VND):", "bonus"),
-            ("OT 1.5 (hours):", "ot15"),
-            ("OT 2.0 (hours):", "ot2"),
-            ("OT 3.0 (hours):", "ot3"),
-            ("Working Days:", "working_days"),
+            ("Gross Salary (VND):", "gross_salary", "0"),
+            ("Number of Dependents:", "dependents", "0"),
+            ("Bonus + On Call (VND):", "bonus", "0"),
+            ("OT 1.5 (hours):", "ot15", "0"),
+            ("OT 2.0 (hours):", "ot2", "0"),
+            ("OT 3.0 (hours):", "ot3", "0"),
+            ("Working Days:", "working_days", "22"),
         ]
 
-        self.entries = {}
-        for i, (label_text, field_name) in enumerate(fields):
+        self.g2n_entries = {}
+        for label_text, field_name, default in fields:
             frame = ttk.Frame(input_frame)
             frame.pack(fill=tk.X, pady=2)
-
-            label = ttk.Label(frame, text=label_text, width=22, anchor='w')
-            label.pack(side=tk.LEFT)
-
+            ttk.Label(frame, text=label_text, width=22, anchor='w').pack(side=tk.LEFT)
             entry = ttk.Entry(frame, width=18)
             entry.pack(side=tk.RIGHT)
-
-            # Set default values
-            if field_name == 'working_days':
-                entry.insert(0, "22")
-            else:
-                entry.insert(0, "0")
-
-            # Auto-format numbers with dots for money fields
+            entry.insert(0, default)
             if field_name in ['gross_salary', 'bonus']:
                 entry.bind('<FocusOut>', lambda e, ent=entry: self.format_entry(ent))
-                entry.bind('<Return>', lambda e, ent=entry: self.format_entry(ent))
-
-            self.entries[field_name] = entry
+            self.g2n_entries[field_name] = entry
 
         # Calculate button
-        calc_button = ttk.Button(main_frame, text="CALCULATE", command=self.calculate, style='Big.TButton')
-        calc_button.pack(pady=10, ipadx=20, ipady=5)
+        ttk.Button(main_frame, text="CALCULATE", command=self.calculate_gross_to_net, style='Big.TButton').pack(pady=10, ipadx=20, ipady=5)
 
         # Output frame
         output_frame = ttk.LabelFrame(main_frame, text="OUTPUT", padding="10")
         output_frame.pack(fill=tk.X)
 
-        # Output fields
         output_fields = [
             ("Transport:", "transport"),
             ("Mobifone:", "mobifone"),
@@ -266,37 +275,133 @@ class SalaryCalculatorApp:
             ("Trade Union:", "trade_union"),
         ]
 
-        self.output_labels = {}
+        self.g2n_output_labels = {}
         for label_text, field_name in output_fields:
             frame = ttk.Frame(output_frame)
             frame.pack(fill=tk.X, pady=1)
-
-            label = ttk.Label(frame, text=label_text, width=18, anchor='w')
-            label.pack(side=tk.LEFT)
-
+            ttk.Label(frame, text=label_text, width=18, anchor='w').pack(side=tk.LEFT)
             value_label = ttk.Label(frame, text="0", width=18, anchor='e')
             value_label.pack(side=tk.RIGHT)
-            self.output_labels[field_name] = value_label
+            self.g2n_output_labels[field_name] = value_label
 
-        # NET SALARY - Big display with green background
+        # NET SALARY display
         net_frame = tk.Frame(main_frame, bg='#90EE90', padx=20, pady=15)
         net_frame.pack(fill=tk.X, pady=15)
-
         tk.Label(net_frame, text="NET SALARY", font=('Arial', 14, 'bold'), bg='#90EE90').pack()
-        self.net_salary_big = tk.Label(net_frame, text="0 VND", font=('Arial', 28, 'bold'), fg='#006400', bg='#90EE90')
-        self.net_salary_big.pack(pady=8)
-
-        # Note for Internal employees
-        self.note_label = tk.Label(net_frame, text="", font=('Arial', 11, 'italic'), fg='#8B0000', bg='#90EE90')
-        self.note_label.pack()
+        self.g2n_net_salary = tk.Label(net_frame, text="0 VND", font=('Arial', 28, 'bold'), fg='#006400', bg='#90EE90')
+        self.g2n_net_salary.pack(pady=8)
+        self.g2n_note_label = tk.Label(net_frame, text="", font=('Arial', 11, 'italic'), fg='#8B0000', bg='#90EE90')
+        self.g2n_note_label.pack()
 
         # Clear button
-        clear_button = ttk.Button(main_frame, text="CLEAR", command=self.clear)
-        clear_button.pack(pady=10)
+        ttk.Button(main_frame, text="CLEAR", command=self.clear_gross_to_net).pack(pady=10)
+
+    def create_net_to_gross_tab(self):
+        """Create Net to Gross calculator tab"""
+        # Create canvas with scrollbar
+        canvas = tk.Canvas(self.net_to_gross_tab, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.net_to_gross_tab, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        def configure_canvas(event):
+            canvas.itemconfig(canvas.find_all()[0], width=event.width)
+        canvas.bind('<Configure>', configure_canvas)
+
+        # Main content frame
+        main_frame = ttk.Frame(scrollable_frame, padding="15")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Title
+        ttk.Label(main_frame, text="NET TO GROSS CALCULATOR", style='Title.TLabel').pack(pady=(0, 10))
+
+        # Input frame
+        input_frame = ttk.LabelFrame(main_frame, text="INPUT", padding="10")
+        input_frame.pack(fill=tk.X, pady=(0, 10))
+
+        # Employee Type
+        type_frame = ttk.Frame(input_frame)
+        type_frame.pack(fill=tk.X, pady=(0, 8))
+        ttk.Label(type_frame, text="Employee Type:", width=22, anchor='w').pack(side=tk.LEFT)
+        self.n2g_employee_type = tk.StringVar(value="Outsource")
+        type_buttons = ttk.Frame(type_frame)
+        type_buttons.pack(side=tk.RIGHT)
+        ttk.Radiobutton(type_buttons, text="Outsource", variable=self.n2g_employee_type, value="Outsource").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(type_buttons, text="Internal", variable=self.n2g_employee_type, value="Internal").pack(side=tk.LEFT, padx=5)
+
+        ttk.Separator(input_frame, orient='horizontal').pack(fill=tk.X, pady=5)
+
+        # Input fields
+        fields = [
+            ("Net Salary (VND):", "net_salary", "0"),
+            ("Number of Dependents:", "dependents", "0"),
+            ("Bonus + On Call (VND):", "bonus", "0"),
+            ("OT 1.5 (hours):", "ot15", "0"),
+            ("OT 2.0 (hours):", "ot2", "0"),
+            ("OT 3.0 (hours):", "ot3", "0"),
+            ("Working Days:", "working_days", "22"),
+        ]
+
+        self.n2g_entries = {}
+        for label_text, field_name, default in fields:
+            frame = ttk.Frame(input_frame)
+            frame.pack(fill=tk.X, pady=2)
+            ttk.Label(frame, text=label_text, width=22, anchor='w').pack(side=tk.LEFT)
+            entry = ttk.Entry(frame, width=18)
+            entry.pack(side=tk.RIGHT)
+            entry.insert(0, default)
+            if field_name in ['net_salary', 'bonus']:
+                entry.bind('<FocusOut>', lambda e, ent=entry: self.format_entry(ent))
+            self.n2g_entries[field_name] = entry
+
+        # Calculate button
+        ttk.Button(main_frame, text="CALCULATE", command=self.calculate_net_to_gross, style='Big.TButton').pack(pady=10, ipadx=20, ipady=5)
+
+        # Output frame
+        output_frame = ttk.LabelFrame(main_frame, text="OUTPUT", padding="10")
+        output_frame.pack(fill=tk.X)
+
+        output_fields = [
+            ("Transport:", "transport"),
+            ("Mobifone:", "mobifone"),
+            ("Laptop:", "laptop"),
+            ("Total Salary:", "total_salary"),
+            ("OT Amount:", "ot_amount"),
+            ("Taxable Income:", "taxable_income"),
+            ("Tax Amount:", "tax"),
+            ("Insurance (10.5%):", "insurance"),
+            ("Trade Union:", "trade_union"),
+        ]
+
+        self.n2g_output_labels = {}
+        for label_text, field_name in output_fields:
+            frame = ttk.Frame(output_frame)
+            frame.pack(fill=tk.X, pady=1)
+            ttk.Label(frame, text=label_text, width=18, anchor='w').pack(side=tk.LEFT)
+            value_label = ttk.Label(frame, text="0", width=18, anchor='e')
+            value_label.pack(side=tk.RIGHT)
+            self.n2g_output_labels[field_name] = value_label
+
+        # GROSS SALARY display
+        gross_frame = tk.Frame(main_frame, bg='#87CEEB', padx=20, pady=15)
+        gross_frame.pack(fill=tk.X, pady=15)
+        tk.Label(gross_frame, text="GROSS SALARY", font=('Arial', 14, 'bold'), bg='#87CEEB').pack()
+        self.n2g_gross_salary = tk.Label(gross_frame, text="0 VND", font=('Arial', 28, 'bold'), fg='#00008B', bg='#87CEEB')
+        self.n2g_gross_salary.pack(pady=8)
+        self.n2g_note_label = tk.Label(gross_frame, text="", font=('Arial', 11, 'italic'), fg='#8B0000', bg='#87CEEB')
+        self.n2g_note_label.pack()
+
+        # Clear button
+        ttk.Button(main_frame, text="CLEAR", command=self.clear_net_to_gross).pack(pady=10)
 
     def parse_number(self, value: str) -> float:
         """Parse number that may contain dots as thousand separators"""
-        # Remove dots (thousand separator) and replace comma with dot for decimal
         cleaned = value.replace('.', '').replace(',', '.')
         return float(cleaned) if cleaned else 0
 
@@ -311,56 +416,93 @@ class SalaryCalculatorApp:
         except ValueError:
             pass
 
-    def calculate(self):
+    def calculate_gross_to_net(self):
+        """Calculate Net from Gross"""
         try:
-            gross_salary = self.parse_number(self.entries['gross_salary'].get())
-            num_dependents = int(self.entries['dependents'].get().replace('.', ''))
-            bonus_oncall = self.parse_number(self.entries['bonus'].get())
-            ot15 = float(self.entries['ot15'].get().replace(',', '.'))
-            ot2 = float(self.entries['ot2'].get().replace(',', '.'))
-            ot3 = float(self.entries['ot3'].get().replace(',', '.'))
-            working_days = int(self.entries['working_days'].get())
-            employee_type = self.employee_type.get()
+            gross_salary = self.parse_number(self.g2n_entries['gross_salary'].get())
+            num_dependents = int(self.g2n_entries['dependents'].get().replace('.', ''))
+            bonus_oncall = self.parse_number(self.g2n_entries['bonus'].get())
+            ot15 = float(self.g2n_entries['ot15'].get().replace(',', '.'))
+            ot2 = float(self.g2n_entries['ot2'].get().replace(',', '.'))
+            ot3 = float(self.g2n_entries['ot3'].get().replace(',', '.'))
+            working_days = int(self.g2n_entries['working_days'].get())
+            employee_type = self.g2n_employee_type.get()
 
             result = calculate_net_salary(gross_salary, num_dependents, bonus_oncall, ot15, ot2, ot3, working_days, employee_type)
 
-            # Update output labels with dot separator
-            self.output_labels['transport'].config(text=format_number(result['transport']))
-            self.output_labels['mobifone'].config(text=format_number(result['mobifone']))
-            self.output_labels['laptop'].config(text=format_number(result['laptop']))
-            self.output_labels['total_salary'].config(text=format_number(result['total_salary']))
-            self.output_labels['ot_amount'].config(text=format_number(result['ot_amount']))
-            self.output_labels['insurance'].config(text=format_number(result['insurance']))
-            self.output_labels['trade_union'].config(text=format_number(result['trade_union']))
-            self.output_labels['taxable_income'].config(text=format_number(result['taxable_income']))
-            self.output_labels['tax'].config(text=format_number(result['tax']))
-            self.net_salary_big.config(text=f"{format_number(result['net_salary'])} VND")
+            self.g2n_output_labels['transport'].config(text=format_number(result['transport']))
+            self.g2n_output_labels['mobifone'].config(text=format_number(result['mobifone']))
+            self.g2n_output_labels['laptop'].config(text=format_number(result['laptop']))
+            self.g2n_output_labels['total_salary'].config(text=format_number(result['total_salary']))
+            self.g2n_output_labels['ot_amount'].config(text=format_number(result['ot_amount']))
+            self.g2n_output_labels['insurance'].config(text=format_number(result['insurance']))
+            self.g2n_output_labels['trade_union'].config(text=format_number(result['trade_union']))
+            self.g2n_output_labels['taxable_income'].config(text=format_number(result['taxable_income']))
+            self.g2n_output_labels['tax'].config(text=format_number(result['tax']))
+            self.g2n_net_salary.config(text=f"{format_number(result['net_salary'])} VND")
 
-            # Show/hide note for Internal employees
             if employee_type == "Internal":
-                self.note_label.config(text="(Please add gasoline allowance)")
+                self.g2n_note_label.config(text="(Please add gasoline allowance)")
             else:
-                self.note_label.config(text="")
+                self.g2n_note_label.config(text="")
 
         except ValueError:
             messagebox.showerror("Error", "Please enter valid numbers!")
 
-    def clear(self):
-        # Reset employee type
-        self.employee_type.set("Outsource")
+    def calculate_net_to_gross(self):
+        """Calculate Gross from Net"""
+        try:
+            target_net = self.parse_number(self.n2g_entries['net_salary'].get())
+            num_dependents = int(self.n2g_entries['dependents'].get().replace('.', ''))
+            bonus_oncall = self.parse_number(self.n2g_entries['bonus'].get())
+            ot15 = float(self.n2g_entries['ot15'].get().replace(',', '.'))
+            ot2 = float(self.n2g_entries['ot2'].get().replace(',', '.'))
+            ot3 = float(self.n2g_entries['ot3'].get().replace(',', '.'))
+            working_days = int(self.n2g_entries['working_days'].get())
+            employee_type = self.n2g_employee_type.get()
 
-        for field_name, entry in self.entries.items():
-            entry.delete(0, tk.END)
-            if field_name == 'working_days':
-                entry.insert(0, "22")
+            result = calculate_gross_from_net(target_net, num_dependents, bonus_oncall, ot15, ot2, ot3, working_days, employee_type)
+
+            self.n2g_output_labels['transport'].config(text=format_number(result['transport']))
+            self.n2g_output_labels['mobifone'].config(text=format_number(result['mobifone']))
+            self.n2g_output_labels['laptop'].config(text=format_number(result['laptop']))
+            self.n2g_output_labels['total_salary'].config(text=format_number(result['total_salary']))
+            self.n2g_output_labels['ot_amount'].config(text=format_number(result['ot_amount']))
+            self.n2g_output_labels['insurance'].config(text=format_number(result['insurance']))
+            self.n2g_output_labels['trade_union'].config(text=format_number(result['trade_union']))
+            self.n2g_output_labels['taxable_income'].config(text=format_number(result['taxable_income']))
+            self.n2g_output_labels['tax'].config(text=format_number(result['tax']))
+            self.n2g_gross_salary.config(text=f"{format_number(result['gross_salary'])} VND")
+
+            if employee_type == "Internal":
+                self.n2g_note_label.config(text="(Please add gasoline allowance)")
             else:
-                entry.insert(0, "0")
+                self.n2g_note_label.config(text="")
 
-        for label in self.output_labels.values():
+        except ValueError:
+            messagebox.showerror("Error", "Please enter valid numbers!")
+
+    def clear_gross_to_net(self):
+        """Clear Gross to Net tab"""
+        self.g2n_employee_type.set("Outsource")
+        for field_name, entry in self.g2n_entries.items():
+            entry.delete(0, tk.END)
+            entry.insert(0, "22" if field_name == 'working_days' else "0")
+        for label in self.g2n_output_labels.values():
             label.config(text="0")
+        self.g2n_net_salary.config(text="0 VND")
+        self.g2n_note_label.config(text="")
 
-        self.net_salary_big.config(text="0 VND")
-        self.note_label.config(text="")
+    def clear_net_to_gross(self):
+        """Clear Net to Gross tab"""
+        self.n2g_employee_type.set("Outsource")
+        for field_name, entry in self.n2g_entries.items():
+            entry.delete(0, tk.END)
+            entry.insert(0, "22" if field_name == 'working_days' else "0")
+        for label in self.n2g_output_labels.values():
+            label.config(text="0")
+        self.n2g_gross_salary.config(text="0 VND")
+        self.n2g_note_label.config(text="")
 
 
 def main():
