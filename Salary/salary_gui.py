@@ -76,8 +76,12 @@ def calculate_net_salary(gross_salary, num_dependents, bonus_oncall, ot15, ot2, 
     if employee_type == "Internal":
         total_salary = gross_salary + bonus_oncall
         transport = 0  # Set to 0 for display
+        mobifone = 0
+        laptop = 0
     else:
         total_salary = gross_salary + transport + MOBIFONE + LAPTOP + bonus_oncall
+        mobifone = MOBIFONE
+        laptop = LAPTOP
 
     # Insurance deduction
     insurance = gross_salary * INSURANCE_RATE
@@ -95,6 +99,8 @@ def calculate_net_salary(gross_salary, num_dependents, bonus_oncall, ot15, ot2, 
 
     return {
         'transport': transport,
+        'mobifone': mobifone,
+        'laptop': laptop,
         'total_salary': total_salary,
         'ot_amount': ot_amount,
         'insurance': insurance,
@@ -246,6 +252,8 @@ class SalaryCalculatorApp:
         # Output fields
         output_fields = [
             ("Transport:", "transport"),
+            ("Mobifone:", "mobifone"),
+            ("Laptop:", "laptop"),
             ("Total Salary:", "total_salary"),
             ("OT Amount:", "ot_amount"),
             ("Taxable Income:", "taxable_income"),
@@ -313,6 +321,8 @@ class SalaryCalculatorApp:
 
             # Update output labels with dot separator
             self.output_labels['transport'].config(text=format_number(result['transport']))
+            self.output_labels['mobifone'].config(text=format_number(result['mobifone']))
+            self.output_labels['laptop'].config(text=format_number(result['laptop']))
             self.output_labels['total_salary'].config(text=format_number(result['total_salary']))
             self.output_labels['ot_amount'].config(text=format_number(result['ot_amount']))
             self.output_labels['insurance'].config(text=format_number(result['insurance']))
