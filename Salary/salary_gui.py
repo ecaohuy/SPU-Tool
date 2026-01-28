@@ -6,6 +6,8 @@ Tkinter GUI Application
 
 import tkinter as tk
 from tkinter import ttk, messagebox
+import sys
+import os
 
 # Constants
 MOBIFONE = 450_000
@@ -107,37 +109,93 @@ def calculate_net_salary(gross_salary, num_dependents, bonus_oncall, ot15, ot2, 
 class SalaryCalculatorApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Gross to Net Salary Calculator")
-        self.root.geometry("500x800")
-        self.root.minsize(500, 800)
+        self.root.title("Salary Calculator - Gross to Net")
+        self.root.geometry("520x700")
+        self.root.minsize(480, 600)
         self.root.resizable(True, True)
+
+        # Remove the default Python icon
+        try:
+            # For Windows - set empty icon
+            self.root.iconbitmap('')
+        except:
+            pass
+
+        # Try to remove icon completely on Windows
+        try:
+            self.root.wm_iconbitmap('')
+        except:
+            pass
 
         # Configure style
         style = ttk.Style()
         style.configure('Title.TLabel', font=('Arial', 14, 'bold'))
         style.configure('Result.TLabel', font=('Arial', 12, 'bold'), foreground='#006400')
         style.configure('Header.TLabel', font=('Arial', 10, 'bold'))
+        style.configure('Big.TButton', font=('Arial', 11, 'bold'))
 
         self.create_widgets()
 
+        # Center window on screen
+        self.center_window()
+
+    def center_window(self):
+        """Center the window on screen"""
+        self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
+
     def create_widgets(self):
-        # Main frame
-        main_frame = ttk.Frame(self.root, padding="20")
+        # Create canvas with scrollbar for scrollable content
+        canvas = tk.Canvas(self.root, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=canvas.yview)
+
+        # Scrollable frame
+        self.scrollable_frame = ttk.Frame(canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Enable mousewheel scrolling
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        # Pack scrollbar and canvas
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        # Bind canvas resize to adjust scrollable frame width
+        def configure_canvas(event):
+            canvas.itemconfig(canvas.find_all()[0], width=event.width)
+        canvas.bind('<Configure>', configure_canvas)
+
+        # Main content frame inside scrollable frame
+        main_frame = ttk.Frame(self.scrollable_frame, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # Title
         title_label = ttk.Label(main_frame, text="GROSS TO NET SALARY CALCULATOR", style='Title.TLabel')
-        title_label.pack(pady=(0, 20))
+        title_label.pack(pady=(0, 15))
 
         # Input frame
-        input_frame = ttk.LabelFrame(main_frame, text="INPUT", padding="15")
-        input_frame.pack(fill=tk.X, pady=(0, 15))
+        input_frame = ttk.LabelFrame(main_frame, text="INPUT", padding="10")
+        input_frame.pack(fill=tk.X, pady=(0, 10))
 
         # Employee Type selection
         type_frame = ttk.Frame(input_frame)
-        type_frame.pack(fill=tk.X, pady=(0, 10))
+        type_frame.pack(fill=tk.X, pady=(0, 8))
 
-        ttk.Label(type_frame, text="Employee Type:", width=25, anchor='w').pack(side=tk.LEFT)
+        ttk.Label(type_frame, text="Employee Type:", width=22, anchor='w').pack(side=tk.LEFT)
 
         self.employee_type = tk.StringVar(value="Outsource")
 
@@ -163,12 +221,12 @@ class SalaryCalculatorApp:
         self.entries = {}
         for i, (label_text, field_name) in enumerate(fields):
             frame = ttk.Frame(input_frame)
-            frame.pack(fill=tk.X, pady=3)
+            frame.pack(fill=tk.X, pady=2)
 
-            label = ttk.Label(frame, text=label_text, width=25, anchor='w')
+            label = ttk.Label(frame, text=label_text, width=22, anchor='w')
             label.pack(side=tk.LEFT)
 
-            entry = ttk.Entry(frame, width=20)
+            entry = ttk.Entry(frame, width=18)
             entry.pack(side=tk.RIGHT)
 
             # Set default values
@@ -185,11 +243,11 @@ class SalaryCalculatorApp:
             self.entries[field_name] = entry
 
         # Calculate button
-        calc_button = ttk.Button(main_frame, text="CALCULATE", command=self.calculate)
-        calc_button.pack(pady=15)
+        calc_button = ttk.Button(main_frame, text="CALCULATE", command=self.calculate, style='Big.TButton')
+        calc_button.pack(pady=10, ipadx=20, ipady=5)
 
         # Output frame
-        output_frame = ttk.LabelFrame(main_frame, text="OUTPUT", padding="15")
+        output_frame = ttk.LabelFrame(main_frame, text="OUTPUT", padding="10")
         output_frame.pack(fill=tk.X)
 
         # Output fields
@@ -198,44 +256,33 @@ class SalaryCalculatorApp:
             ("Total Salary:", "total_salary"),
             ("OT Amount:", "ot_amount"),
             ("Taxable Income:", "taxable_income"),
-            ("Tax Amount (from Taxable):", "tax"),
+            ("Tax Amount:", "tax"),
             ("Insurance (10.5%):", "insurance"),
         ]
 
         self.output_labels = {}
         for label_text, field_name in output_fields:
             frame = ttk.Frame(output_frame)
-            frame.pack(fill=tk.X, pady=2)
+            frame.pack(fill=tk.X, pady=1)
 
-            label = ttk.Label(frame, text=label_text, width=20, anchor='w')
+            label = ttk.Label(frame, text=label_text, width=18, anchor='w')
             label.pack(side=tk.LEFT)
 
-            value_label = ttk.Label(frame, text="0", width=20, anchor='e')
+            value_label = ttk.Label(frame, text="0", width=18, anchor='e')
             value_label.pack(side=tk.RIGHT)
             self.output_labels[field_name] = value_label
 
-        # Separator
-        ttk.Separator(output_frame, orient='horizontal').pack(fill=tk.X, pady=10)
+        # NET SALARY - Big display with green background
+        net_frame = tk.Frame(main_frame, bg='#90EE90', padx=20, pady=15)
+        net_frame.pack(fill=tk.X, pady=15)
 
-        # Net Salary result
-        result_frame = ttk.Frame(output_frame)
-        result_frame.pack(fill=tk.X, pady=5)
+        tk.Label(net_frame, text="NET SALARY", font=('Arial', 14, 'bold'), bg='#90EE90').pack()
+        self.net_salary_big = tk.Label(net_frame, text="0 VND", font=('Arial', 28, 'bold'), fg='#006400', bg='#90EE90')
+        self.net_salary_big.pack(pady=8)
 
-        ttk.Label(result_frame, text="NET SALARY:", style='Header.TLabel', width=20, anchor='w').pack(side=tk.LEFT)
-        self.net_salary_label = ttk.Label(result_frame, text="0 VND", style='Result.TLabel', width=20, anchor='e')
-        self.net_salary_label.pack(side=tk.RIGHT)
-
-        # Net Salary big display with background
-        self.net_frame = tk.Frame(main_frame, bg='#90EE90', pady=15)
-        self.net_frame.pack(fill=tk.X, pady=15)
-
-        tk.Label(self.net_frame, text="NET SALARY", font=('Arial', 12, 'bold'), bg='#90EE90').pack()
-        self.net_salary_big = tk.Label(self.net_frame, text="0 VND", font=('Arial', 24, 'bold'), fg='#006400', bg='#90EE90')
-        self.net_salary_big.pack(pady=5)
-
-        # Note for Internal employees (always visible, text changes)
-        self.note_label = tk.Label(self.net_frame, text="", font=('Arial', 11, 'italic'), fg='#8B0000', bg='#90EE90')
-        self.note_label.pack(pady=(5, 0))
+        # Note for Internal employees
+        self.note_label = tk.Label(net_frame, text="", font=('Arial', 11, 'italic'), fg='#8B0000', bg='#90EE90')
+        self.note_label.pack()
 
         # Clear button
         clear_button = ttk.Button(main_frame, text="CLEAR", command=self.clear)
@@ -278,7 +325,6 @@ class SalaryCalculatorApp:
             self.output_labels['insurance'].config(text=format_number(result['insurance']))
             self.output_labels['taxable_income'].config(text=format_number(result['taxable_income']))
             self.output_labels['tax'].config(text=format_number(result['tax']))
-            self.net_salary_label.config(text=f"{format_number(result['net_salary'])} VND")
             self.net_salary_big.config(text=f"{format_number(result['net_salary'])} VND")
 
             # Show/hide note for Internal employees
@@ -304,13 +350,20 @@ class SalaryCalculatorApp:
         for label in self.output_labels.values():
             label.config(text="0")
 
-        self.net_salary_label.config(text="0 VND")
         self.net_salary_big.config(text="0 VND")
-        self.note_label.config(text="")  # Clear note
+        self.note_label.config(text="")
 
 
 def main():
     root = tk.Tk()
+
+    # Remove icon on Windows
+    if sys.platform == 'win32':
+        try:
+            root.iconbitmap(default='')
+        except:
+            pass
+
     app = SalaryCalculatorApp(root)
     root.mainloop()
 
