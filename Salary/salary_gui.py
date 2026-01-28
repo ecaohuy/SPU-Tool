@@ -17,6 +17,7 @@ PERSONAL_DEDUCTION = 15_500_000  # Updated from 01-Jan-2026
 DEPENDENT_DEDUCTION = 6_200_000   # Updated from 01-Jan-2026
 HOURS_PER_MONTH = 176
 INSURANCE_RATE = 0.105
+TRADE_UNION = 120_000  # For Internal employees only
 
 
 def format_number(value: float) -> str:
@@ -72,16 +73,18 @@ def calculate_net_salary(gross_salary, num_dependents, bonus_oncall, ot15, ot2, 
     hourly_rate = gross_salary / HOURS_PER_MONTH
     ot_amount = (ot15 * hourly_rate * 1.5) + (ot2 * hourly_rate * 2) + (ot3 * hourly_rate * 3)
 
-    # Total salary - Internal excludes transport, mobifone, laptop
+    # Total salary - Internal excludes transport, mobifone, laptop but has trade union
     if employee_type == "Internal":
         total_salary = gross_salary + bonus_oncall
         transport = 0  # Set to 0 for display
         mobifone = 0
         laptop = 0
+        trade_union = TRADE_UNION
     else:
         total_salary = gross_salary + transport + MOBIFONE + LAPTOP + bonus_oncall
         mobifone = MOBIFONE
         laptop = LAPTOP
+        trade_union = 0
 
     # Insurance deduction
     insurance = gross_salary * INSURANCE_RATE
@@ -95,7 +98,7 @@ def calculate_net_salary(gross_salary, num_dependents, bonus_oncall, ot15, ot2, 
     tax = calculate_progressive_tax(taxable_income)
 
     # Net salary
-    net_salary = total_salary - insurance - tax + ot_amount
+    net_salary = total_salary - insurance - tax - trade_union + ot_amount
 
     return {
         'transport': transport,
@@ -104,6 +107,7 @@ def calculate_net_salary(gross_salary, num_dependents, bonus_oncall, ot15, ot2, 
         'total_salary': total_salary,
         'ot_amount': ot_amount,
         'insurance': insurance,
+        'trade_union': trade_union,
         'taxable_income': taxable_income,
         'tax': tax,
         'net_salary': net_salary
@@ -259,6 +263,7 @@ class SalaryCalculatorApp:
             ("Taxable Income:", "taxable_income"),
             ("Tax Amount:", "tax"),
             ("Insurance (10.5%):", "insurance"),
+            ("Trade Union:", "trade_union"),
         ]
 
         self.output_labels = {}
@@ -326,6 +331,7 @@ class SalaryCalculatorApp:
             self.output_labels['total_salary'].config(text=format_number(result['total_salary']))
             self.output_labels['ot_amount'].config(text=format_number(result['ot_amount']))
             self.output_labels['insurance'].config(text=format_number(result['insurance']))
+            self.output_labels['trade_union'].config(text=format_number(result['trade_union']))
             self.output_labels['taxable_income'].config(text=format_number(result['taxable_income']))
             self.output_labels['tax'].config(text=format_number(result['tax']))
             self.net_salary_big.config(text=f"{format_number(result['net_salary'])} VND")
