@@ -6,8 +6,6 @@ Tkinter GUI Application
 
 import tkinter as tk
 from tkinter import ttk, messagebox
-import sys
-import os
 
 # Constants
 MOBIFONE = 450_000
@@ -116,14 +114,9 @@ class SalaryCalculatorApp:
 
         # Remove the default Python icon
         try:
-            # For Windows - set empty icon
-            self.root.iconbitmap('')
-        except:
-            pass
-
-        # Try to remove icon completely on Windows
-        try:
-            self.root.wm_iconbitmap('')
+            # Create a transparent 1x1 pixel image as icon (works on Linux)
+            empty_icon = tk.PhotoImage(width=1, height=1)
+            self.root.iconphoto(True, empty_icon)
         except:
             pass
 
@@ -356,14 +349,6 @@ class SalaryCalculatorApp:
 
 def main():
     root = tk.Tk()
-
-    # Remove icon on Windows
-    if sys.platform == 'win32':
-        try:
-            root.iconbitmap(default='')
-        except:
-            pass
-
     app = SalaryCalculatorApp(root)
     root.mainloop()
 
