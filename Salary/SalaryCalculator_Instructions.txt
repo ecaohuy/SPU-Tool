@@ -1,0 +1,105 @@
+=====================================================
+GROSS TO NET SALARY CALCULATOR - VBA TOOL
+Instructions for Use
+=====================================================
+
+HOW TO IMPORT THE VBA MODULE INTO EXCEL:
+
+1. Open Excel
+2. Press Alt + F11 to open VBA Editor
+3. In VBA Editor, go to File > Import File
+4. Select the file: SalaryCalculator.bas
+5. Click Open
+6. Close VBA Editor (Alt + Q)
+
+-----------------------------------------------------
+HOW TO USE THE TOOL:
+-----------------------------------------------------
+
+METHOD 1: Auto-Setup Worksheet (Recommended)
+---------------------------------------------
+1. Press Alt + F8 to open Macro dialog
+2. Select "SetupSalarySheet" and click Run
+3. A new sheet "SalaryCalculator" will be created
+4. Enter your values in the yellow input cells:
+   - C5: Gross Salary
+   - C6: Number of Dependents
+   - C7: Bonus + On Call Allowance
+   - C8: OT 1.5 hours
+   - C9: OT 2.0 hours
+   - C10: OT 3.0 hours
+   - C11: Working Days (default 22)
+5. Net Salary will be calculated automatically in C21
+
+METHOD 2: Use as Formula Function
+----------------------------------
+You can use the function directly in any cell:
+
+=CalculateNetSalary(GrossSalary, NumDependents, BonusAndOnCall, OT15Hours, OT2Hours, OT3Hours, WorkingDays)
+
+Example:
+=CalculateNetSalary(20000000, 1, 500000, 10, 5, 0, 22)
+
+This calculates net salary for:
+- Gross: 20,000,000 VND
+- 1 dependent
+- 500,000 bonus
+- 10 hours OT 1.5x
+- 5 hours OT 2x
+- 0 hours OT 3x
+- 22 working days
+
+METHOD 3: Show Detailed Breakdown
+----------------------------------
+1. First run SetupSalarySheet and enter your values
+2. Press Alt + F8
+3. Select "QuickCalculate" and click Run
+4. A message box will show detailed breakdown
+
+-----------------------------------------------------
+CALCULATION FORMULAS:
+-----------------------------------------------------
+
+1. TRANSPORT ALLOWANCE:
+   - If working days >= 22: 1,760,000 VND
+   - Otherwise: 80,000 x working days
+
+2. FIXED ALLOWANCES:
+   - Mobifone: 450,000 VND
+   - Laptop: 450,000 VND
+
+3. TOTAL SALARY:
+   = Gross + Transport + Mobifone + Laptop + Bonus
+
+4. OT CALCULATION:
+   = OT1.5 x (Gross/176) x 1.5
+   + OT2.0 x (Gross/176) x 2.0
+   + OT3.0 x (Gross/176) x 3.0
+
+5. INSURANCE DEDUCTIONS (from Gross):
+   - Social Insurance: 8%
+   - Health Insurance: 1.5%
+   - Unemployment: 1%
+   - Total: 10.5%
+
+6. TAXABLE INCOME:
+   = Total Salary - 11,000,000 (personal)
+   - (Dependents x 4,400,000)
+   - Insurance Deductions
+
+7. TAX BRACKETS (Progressive):
+   Level 1: 0 - 5,000,000 -> 5%
+   Level 2: 5,000,001 - 10,000,000 -> 10%
+   Level 3: 10,000,001 - 18,000,000 -> 15%
+   Level 4: 18,000,001 - 32,000,000 -> 20%
+   Level 5: 32,000,001 - 52,000,000 -> 25%
+   Level 6: 52,000,001 - 80,000,000 -> 30%
+   Level 7: Above 80,000,000 -> 35%
+
+8. NET SALARY:
+   = Total Salary - Insurance - Tax + OT
+
+-----------------------------------------------------
+NOTE: Save your Excel file as .xlsm (Macro-Enabled)
+to keep the VBA code.
+=====================================================
