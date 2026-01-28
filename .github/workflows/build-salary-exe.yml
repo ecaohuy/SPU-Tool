@@ -1,4 +1,4 @@
-name: Build Windows EXE
+name: Build Salary Calculator EXE
 
 on:
   push:
@@ -37,6 +37,7 @@ jobs:
         with:
           name: SalaryCalculator-Windows
           path: Salary/dist/SalaryCalculator.exe
+          if-no-files-found: error
           retention-days: 30
 
   release:
